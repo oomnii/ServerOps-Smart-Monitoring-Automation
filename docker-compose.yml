@@ -24,6 +24,8 @@ services:
       - 127.0.0.1:3000:3000
     env_file:
       - ./monitoring/grafana/.env
+    environment:
+      GF_USERS_DEFAULT_THEME: light
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro

@@ -28,7 +28,7 @@ The dashboard is for an active staff user. Health stays public and does not incl
 
 ## Screenshots
 
-The dashboard frames below are from the real UI during Phase 7. The signed-in user is the disposable test account `e2e-staff`. The percentages are live readings from this PC, including a memory alert at 86.2%. No password is shown.
+The frames below are from the running Coffee & Cream interface. The signed-in user is the disposable test account `e2e-staff`. Percentages are live readings from this PC, including a memory alert above 80%. No password is shown.
 
 ![ServerOps sign-in page](docs/screenshots/login.png)
 
@@ -37,6 +37,23 @@ The dashboard frames below are from the real UI during Phase 7. The signed-in us
 ![Live memory alert on the ServerOps dashboard](docs/screenshots/resource-alert.png)
 
 ![Grafana dashboard ServerOps — System Performance Monitoring](docs/screenshots/grafana-monitoring.png)
+
+## Design system
+
+The dashboard uses eight colors, defined as CSS custom properties in `frontend/src/styles.css`.
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| Warm cream | `#FFF8F0` | Header, cards, and button text |
+| Caramel | `#C08552` | Accents, alert borders, and progress fills |
+| Coffee brown | `#8C5A3C` | Secondary text, icons, and primary buttons |
+| Deep espresso | `#4B2E2B` | Primary text, headings, and button hover |
+| Soft off-white | `#F9F8F6` | Page background |
+| Warm gray | `#EFE9E3` | Muted surfaces and progress tracks |
+| Subtle border | `#D9CFC7` | Card, input, and header borders |
+| Muted sand | `#C9B59C` | Disabled controls, with espresso text |
+
+Caramel and sand are not used for small text. Focus uses an espresso outline plus a caramel ring. Statuses also use icons and words, not color alone. Grafana chart lines use coffee, caramel, and espresso. Grafana's own chrome stays on Grafana's light theme and is not restyled.
 
 ## Technology stack
 
