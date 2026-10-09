@@ -46,6 +46,7 @@ _ROUTES = {
     "auth-login": "auth_login",
     "auth-logout": "auth_logout",
     "auth-me": "auth_me",
+    "analytics-history": "analytics_history",
 }
 
 

@@ -1,7 +1,10 @@
 import { LogOut, RefreshCw } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import { StatusIndicator } from "./StatusIndicator.tsx";
 
 interface HeaderProps {
+  title?: string;
+  statusLabel?: string;
   status: "loading" | "online" | "offline";
   refreshing: boolean;
   username: string;
@@ -11,6 +14,8 @@ interface HeaderProps {
 }
 
 export function Header({
+  title = "Smart Server Monitoring Dashboard",
+  statusLabel = "API",
   status,
   refreshing,
   username,
@@ -22,11 +27,17 @@ export function Header({
     <header className="header">
       <div className="brand-block">
         <p className="brand">ServerOps</p>
-        <h1>Smart Server Monitoring Dashboard</h1>
+        <h1>{title}</h1>
+        <nav className="app-nav" aria-label="Main">
+          <NavLink to="/" end>
+            Overview
+          </NavLink>
+          <NavLink to="/analytics">Analytics & API Testing</NavLink>
+        </nav>
       </div>
       <div className="header-actions">
         <p className="signed-in">Signed in as {username}</p>
-        <StatusIndicator status={status} />
+        <StatusIndicator status={status} label={statusLabel} />
         <button
           type="button"
           className="refresh"

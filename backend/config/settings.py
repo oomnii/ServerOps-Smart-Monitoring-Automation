@@ -161,3 +161,9 @@ _metrics_token = os.environ.get("SERVEROPS_METRICS_TOKEN", "").strip()
 if _metrics_token.startswith("replace-with"):
     _metrics_token = ""
 METRICS_SCRAPE_TOKEN = _metrics_token
+
+# Local Prometheus HTTP API. The analytics view rejects any other host or port.
+PROMETHEUS_BASE_URL = (
+    os.environ.get("PROMETHEUS_BASE_URL", "http://127.0.0.1:9090").strip()
+    or "http://127.0.0.1:9090"
+)

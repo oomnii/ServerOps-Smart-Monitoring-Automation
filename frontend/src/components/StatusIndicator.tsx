@@ -2,13 +2,8 @@ import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
 
 interface StatusIndicatorProps {
   status: "loading" | "online" | "offline";
+  label?: string;
 }
-
-const STATUS_TEXT = {
-  loading: "Checking API",
-  online: "API online",
-  offline: "API offline",
-} as const;
 
 const STATUS_ICON = {
   loading: LoaderCircle,
@@ -16,13 +11,19 @@ const STATUS_ICON = {
   offline: CircleAlert,
 } as const;
 
-export function StatusIndicator({ status }: StatusIndicatorProps) {
+export function StatusIndicator({ status, label = "API" }: StatusIndicatorProps) {
   const Icon = STATUS_ICON[status];
+  const text =
+    status === "loading"
+      ? `Checking ${label}`
+      : status === "online"
+        ? `${label} online`
+        : `${label} offline`;
 
   return (
     <p className={`status status-${status}`} role="status">
       <Icon className="status-icon" aria-hidden="true" />
-      <span>{STATUS_TEXT[status]}</span>
+      <span>{text}</span>
     </p>
   );
 }

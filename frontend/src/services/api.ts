@@ -1,4 +1,12 @@
 import type {
+  HistoryMetric,
+  HistoryPoint,
+  HistoryRange,
+  HistoryResponse,
+  HistorySeries,
+  HistoryUnit,
+} from "../types/analytics.ts";
+import type {
   CpuMetrics,
   DiskMetrics,
   HealthResponse,
@@ -40,6 +48,18 @@ export async function getHealth(signal: AbortSignal): Promise<HealthResponse> {
 export async function getSystemMetrics(signal: AbortSignal): Promise<SystemMetrics> {
   const payload = await requestJson("/api/metrics/", signal);
   return parseSystemMetrics(payload);
+}
+
+export async function getMetricHistory(
+  metric: HistoryMetric,
+  range: HistoryRange,
+  signal: AbortSignal,
+): Promise<HistoryResponse> {
+  const payload = await requestJson(
+    `/api/analytics/history/?metric=${metric}&range=${range}`,
+    signal,
+  );
+  return parseHistory(payload, metric, range);
 }
 
 export async function getSession(signal: AbortSignal): Promise<SessionUser> {
@@ -278,6 +298,68 @@ function safeText(value: unknown): string | null {
     return null;
   }
   return text;
+}
+
+function parseHistory(
+  payload: unknown,
+  metric: HistoryMetric,
+  range: HistoryRange,
+): HistoryResponse {
+  if (!isRecord(payload)) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  const unit: HistoryUnit = metric === "http_requests" ? "requests_per_second" : "percent";
+  if (payload.metric !== metric || payload.range !== range || payload.unit !== unit) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  if (
+    typeof payload.step_seconds !== "number" ||
+    !Number.isInteger(payload.step_seconds) ||
+    payload.step_seconds < 1 ||
+    payload.step_seconds > 300
+  ) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  if (!Array.isArray(payload.series)) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  return {
+    metric,
+    range,
+    unit,
+    step_seconds: payload.step_seconds,
+    series: payload.series.map((item) => parseHistorySeries(item, unit)),
+  };
+}
+
+function parseHistorySeries(payload: unknown, unit: HistoryUnit): HistorySeries {
+  if (!isRecord(payload) || typeof payload.label !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(payload.label)) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  if (!Array.isArray(payload.points)) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  const points = payload.points.map((point) => parseHistoryPoint(point, unit));
+  points.sort((left, right) => left.timestamp - right.timestamp);
+  return { label: payload.label, points };
+}
+
+function parseHistoryPoint(payload: unknown, unit: HistoryUnit): HistoryPoint {
+  if (!isRecord(payload)) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  const timestamp = payload.timestamp;
+  const value = payload.value;
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  if (unit === "percent" && value > 100) {
+    throw new ApiError("The analytics API returned an unexpected response.");
+  }
+  return { timestamp, value };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

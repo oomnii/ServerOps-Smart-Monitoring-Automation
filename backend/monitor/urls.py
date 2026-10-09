@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from monitor import auth_views, views
+from monitor import analytics, auth_views, views
 
 urlpatterns = [
     path("auth/csrf/", auth_views.csrf_cookie, name="auth-csrf"),
@@ -14,4 +14,5 @@ urlpatterns = [
     path("metrics/memory/", views.memory_metrics, name="memory-metrics"),
     path("metrics/disk/", views.disk_metrics, name="disk-metrics"),
     path("metrics/", views.all_metrics, name="all-metrics"),
+    path("analytics/history/", analytics.history, name="analytics-history"),
 ]

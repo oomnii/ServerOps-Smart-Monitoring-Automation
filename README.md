@@ -118,7 +118,15 @@ Copy-Item -LiteralPath ".\monitoring\prometheus\scrape_token.example" -Destinati
 Copy-Item -LiteralPath ".\monitoring\grafana\.env.example" -Destination ".\monitoring\grafana\.env"
 ```
 
-Replace the copied scrape token with the real token. In `monitoring\grafana\.env`, set `GF_SECURITY_ADMIN_PASSWORD` to a random password. Do not commit either file.
+Replace the copied scrape token with the real token. In `monitoring\grafana\.env`, set the Grafana administrator. On this PC the username is `OmServerOps`. The password is only in that gitignored file, as `GF_SECURITY_ADMIN_PASSWORD`. Do not commit the file, and do not paste the password into the README.
+
+`GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD` apply when Grafana creates its admin user. An existing `grafana-data` volume keeps the account that was created earlier. Changing `.env` alone does not change that saved account.
+
+To read the current local password, open `monitoring\grafana\.env` on this computer. To set a new password for the saved admin user without deleting dashboards, users, or volumes, run this from the project root while the Grafana container is running, then put the same password in `monitoring\grafana\.env`:
+
+```powershell
+docker exec serverops-grafana-1 grafana cli admin reset-admin-password "your-new-password"
+```
 
 From the project root:
 
@@ -126,7 +134,7 @@ From the project root:
 docker compose up -d
 ```
 
-Open http://127.0.0.1:9090/ and http://127.0.0.1:3000/ . In Grafana, sign in with the user and password from `monitoring\grafana\.env`. The provisioned dashboard is **ServerOps — System Performance Monitoring**. The exporter stays protected: a missing or wrong bearer token is rejected.
+Open http://127.0.0.1:9090/ and http://127.0.0.1:3000/ . In Grafana, sign in as `OmServerOps` with the password from `monitoring\grafana\.env`. The provisioned dashboard is **ServerOps — System Performance Monitoring**. The exporter stays protected: a missing or wrong bearer token is rejected.
 
 Stop the containers and keep their saved metrics:
 
@@ -217,6 +225,46 @@ docker compose down
 
 **PowerShell will not run the script.** Call it with `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-serverops.ps1`. Do not set a machine-wide execution policy to get past this.
 
+**Prometheus is offline.** Overview keeps working. Analytics still opens, and its charts say that history is unavailable. Manual API testing still calls Django. The HTTP chart stays empty until Prometheus is scraped again. Start Prometheus with the Compose command in section F, then use Retry on the analytics page.
+
+## ServerOps — Two-Page Dashboard
+
+After sign-in there are two pages. The login screen is separate. Overview opens first. Analytics & API Testing is the other page in the header. Moving between them does not reload the browser. Back and Forward follow the same two addresses: `/` and `/analytics`.
+
+### Overview
+
+Overview is the existing monitoring dashboard.
+
+- Live CPU, RAM, and disk readings from this PC
+- Logical CPU cores, memory capacity, and disk capacity
+- API online or offline
+- Automatic refresh about every 5 seconds, plus Refresh
+- CPU and memory alerts at 80%
+- Last updated time, and a stale-data label when a later request fails
+
+### Analytics & API Testing
+
+Analytics reads stored Prometheus samples through Django. It does not read Prometheus from the browser.
+
+- CPU Usage, Memory Usage, Disk Usage, and Django HTTP Requests
+- Time filters for the last 15 minutes, 1 hour, 6 hours, and 24 hours
+- Refresh, plus a refresh about every 10 seconds while this page is open
+- A clear unavailable state when Prometheus is not running
+
+The HTTP chart is `rate()` over one minute, in requests per second. Sending 100 requests does not draw a point at 100 requests per second. Prometheus has to scrape Django before the new traffic appears. If Prometheus has only a few minutes of samples, a 24-hour filter shows those samples and does not fill the missing hours.
+
+Manual API Testing sends real GET requests to this ServerOps API.
+
+- Endpoint choices are `GET /api/health/` and `GET /api/metrics/`
+- Number of Requests accepts a whole number from 1 to 200
+- Two requests run at a time, with at least 100 ms between starts
+- Cancel Test stops requests that have not finished
+- Results show the real status codes and the browser's measured durations, including browser and network time
+
+`/api/health/` is the better choice for watching the HTTP chart, because `/api/metrics/` spends about a second sampling CPU. Requests under `/api/` increase `serverops_http_requests_total`. The chart shows the scraped rate, not a copy of the test counter.
+
+Start Django and React with section C. Start Prometheus and Grafana with section F when you want the four charts. Overview does not need Docker.
+
 ## Overview
 
 - Real-time CPU, memory, and system-drive readings from this PC
@@ -237,6 +285,8 @@ docker compose down
 - Stale readings stay visible and labeled when a later request fails
 - `GET /internal/metrics/` exposes Prometheus text and requires a bearer token
 - Grafana charts CPU, memory, disk, and Django HTTP request rate
+- Analytics charts those same Prometheus series inside the Coffee & Cream dashboard
+- Manual API testing calls only GET /api/health/ and GET /api/metrics/, at most 200 times
 - Ansible configures only `/tmp/serverops-lab` inside its own container
 
 ## Screenshots
@@ -337,8 +387,8 @@ These are local development controls. Debug mode, SQLite, and localhost binding 
 Phases 0 through 7 were verified on this machine on 9 October 2026.
 
 - Django checks: no issues. Migrations: no pending changes.
-- Django tests: 38 passed. Pytest: 38 passed, 91% coverage of `monitor` and `config`.
-- Playwright: 23 passed in Chromium.
+- Django tests: 57 passed. Pytest: 57 passed, 94% coverage of `monitor` and `config`.
+- Playwright: 37 passed in Chromium.
 - Frontend lint and production build passed.
 - Prometheus target `serverops` was up, and Grafana showed the four panels.
 - Ansible second run reported `changed=0`.

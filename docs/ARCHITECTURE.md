@@ -1,6 +1,6 @@
 # ServerOps Architecture
 
-Status: Phases 0–7 are complete. Prometheus on Docker Desktop scrapes Django at `host.docker.internal:8000` while Django stays bound to `127.0.0.1`. Ansible runs in a separate disposable Linux container and uses a local connection only. Pytest and Playwright use disposable databases, not `backend/db.sqlite3`. The repository has no commits and no Git remote yet.
+Status: Phases 0–7 are complete. After sign-in the app has two pages: Overview, and Analytics & API Testing. Prometheus on Docker Desktop scrapes Django at `host.docker.internal:8000` while Django stays bound to `127.0.0.1`. Ansible runs in a separate disposable Linux container and uses a local connection only. Pytest and Playwright use disposable databases, not `backend/db.sqlite3`.
 
 ServerOps is a beginner-friendly dashboard for one local computer. Django reads that computer's CPU, memory, and disk metrics and exposes them over a REST API. A React dashboard displays those metrics. Prometheus and Grafana are a separate monitoring path. The Ansible lab is another separate path and does not configure this PC.
 
@@ -39,6 +39,7 @@ Django runs from `backend/` on Python 3.11. `monitor/services.py` reads the host
 | `GET /api/metrics/memory/` | Active staff | `total_bytes`, `used_bytes`, `available_bytes`, `memory_percent` |
 | `GET /api/metrics/disk/` | Active staff | `total_bytes`, `used_bytes`, `free_bytes`, `disk_percent` |
 | `GET /api/metrics/` | Active staff | `timestamp_utc` plus `cpu`, `memory`, and `disk` |
+| `GET /api/analytics/history/` | Active staff | `metric`, `range`, `unit`, `step_seconds`, and `series` of real Prometheus samples |
 
 CPU percentage uses a one-second blocking sample, the same interval as Windows `% Processor Time`. Memory and disk sizes are bytes. The disk reading uses the Windows system drive (`SystemDrive`, usually `C:\`), not `/`. The timestamp is UTC ISO 8601. GET requests do not insert metric rows.
 
@@ -71,6 +72,75 @@ Grafana dashboard
 The gauges are `serverops_cpu_usage_percent`, `serverops_memory_usage_percent`, `serverops_memory_total_bytes`, `serverops_memory_used_bytes`, `serverops_memory_available_bytes`, `serverops_disk_usage_percent`, `serverops_disk_total_bytes`, `serverops_disk_used_bytes`, and `serverops_disk_free_bytes`. They describe the Windows host, including the same system drive as the JSON disk API. API calls under `/api/` also update `serverops_http_requests_total` and `serverops_http_request_duration_seconds`. Labels are method, status class, and a fixed route name. The scrape path is not counted.
 
 Prometheus and Grafana are Compose services bound to `127.0.0.1:9090` and `127.0.0.1:3000`. Grafana signup and anonymous access are off. The datasource URL is `http://prometheus:9090`. The provisioned dashboard is `ServerOps — System Performance Monitoring`. Django is not in a container. `host.docker.internal` is an allowed Host name, and the development server still binds to `127.0.0.1`. A container may be unable to open that loopback address. That is a host-networking limit, not a reason to listen on every interface.
+
+## Two dashboard pages
+
+Overview and Analytics share one signed-in header. The login screen stays outside those pages. The browser never opens port 9090.
+
+### Overview
+
+```text
+Windows host
+        |
+        | psutil, including a one-second CPU sample
+        v
+Django JSON API  (/api/health/ and /api/metrics/)
+        |
+        | session cookie, about every 5 seconds
+        v
+React Overview page
+```
+
+Overview shows the current CPU, memory, and disk readings, resource alerts, the API online/offline state, and the last successful update. A failed refresh keeps that last snapshot and marks it stale.
+
+### Analytics
+
+```text
+Windows host
+        |
+        | psutil when Prometheus scrapes
+        v
+Django exporter  (GET /internal/metrics/)
+        |
+        v
+Prometheus
+        |
+        | fixed PromQL, chosen on the server from a metric id
+        v
+Django  GET /api/analytics/history/
+        |
+        | active staff session only
+        v
+React charts
+```
+
+The allowed metric ids are `cpu`, `memory`, `disk`, and `http_requests`. The allowed ranges are `15m`, `1h`, `6h`, and `24h`. Django maps those ids to `serverops_cpu_usage_percent`, `serverops_memory_usage_percent`, `serverops_disk_usage_percent`, and `sum by (route) (rate(serverops_http_requests_total[1m]))`. The browser cannot send its own PromQL or a Prometheus URL. Empty ranges stay empty. Missing or non-finite samples are left out rather than drawn as zero. The charts poll about every 10 seconds only while the Analytics page is open.
+
+`rate()` is a per-second average over one minute. A burst of 100 requests does not mean the chart reads 100 requests per second.
+
+### Manual API testing
+
+```text
+React request generator
+        |
+        | same-origin GET /api/health/ or GET /api/metrics/
+        v
+Django API
+        |
+        | /api/ requests update serverops_http_requests_total
+        v
+Prometheus scrape
+        |
+        v
+Django analytics API
+        |
+        v
+HTTP Requests chart
+```
+
+The panel can call only those two GET paths. The count is a whole number from 1 to 200. Two requests run at a time, with at least 100 ms between starts. Durations come from `performance.now()` in the browser and include browser and network time. HTTP 2xx counts as success. Other HTTP statuses and connection errors count as failures. Cancelled requests are separate. The results stay in the page until navigation or sign-out. They are not written to a database.
+
+Current metrics, historical samples, and API-test timings are different measurements. Overview reads Django's latest psutil snapshot. The charts read stored Prometheus samples. The test panel reads the browser's own request timings. The HTTP chart reads Prometheus's windowed request rate, not the test panel's count.
 
 ## Automation path
 

@@ -1,6 +1,8 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useSession } from "./auth/useSession.ts";
+import { AnalyticsPage } from "./components/AnalyticsPage.tsx";
 import { Dashboard } from "./components/Dashboard.tsx";
 import { LoginScreen } from "./components/LoginScreen.tsx";
-import { useSession } from "./auth/useSession.ts";
 
 export default function App() {
   const session = useSession();
@@ -37,14 +39,21 @@ export default function App() {
   }
 
   if (session.status === "authenticated" || session.status === "signing-out") {
+    const pageProps = {
+      username: session.username ?? "",
+      loggingOut: session.status === "signing-out",
+      logoutError: session.logoutError,
+      onLogout: () => void session.signOut(),
+      onAuthFailure: session.expire,
+    };
     return (
-      <Dashboard
-        username={session.username ?? ""}
-        loggingOut={session.status === "signing-out"}
-        logoutError={session.logoutError}
-        onLogout={() => void session.signOut()}
-        onAuthFailure={session.expire}
-      />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Dashboard {...pageProps} />} />
+          <Route path="/analytics" element={<AnalyticsPage {...pageProps} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     );
   }
 
