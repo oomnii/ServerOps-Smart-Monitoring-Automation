@@ -1,0 +1,12 @@
+{
+  "environment": {{ serverops_environment | to_json }},
+  "monitoring_id": {{ serverops_monitoring_id | to_json }},
+  "thresholds": {
+    "cpu_percent": {{ serverops_cpu_threshold }},
+    "memory_percent": {{ serverops_memory_threshold }}
+  },
+  "health_check": {
+    "target": "disposable-linux-lab",
+    "lab_root": {{ serverops_lab_root | to_json }}
+  }
+}

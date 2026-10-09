@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Validate the disposable Linux lab. This script does not inspect Windows."""
+
+import json
+import os
+import shutil
+import sys
+
+LAB_ROOT = {{ serverops_lab_root | to_json }}
+CONFIG_PATH = os.path.join(LAB_ROOT, "config", "serverops.json")
+REQUIRED_DIRS = ("config", "scripts", "logs")
+
+
+def fail(message):
+    print(f"error: {message}")
+    return 1
+
+
+def main():
+    if not os.path.isdir(LAB_ROOT):
+        return fail(f"lab directory is missing: {LAB_ROOT}")
+    for name in REQUIRED_DIRS:
+        path = os.path.join(LAB_ROOT, name)
+        if not os.path.isdir(path):
+            return fail(f"required directory is missing: {path}")
+    if not os.path.isfile(CONFIG_PATH):
+        return fail(f"configuration file is missing: {CONFIG_PATH}")
+    try:
+        with open(CONFIG_PATH, encoding="utf-8") as handle:
+            config = json.load(handle)
+    except json.JSONDecodeError as exc:
+        return fail(f"configuration is not valid JSON: {exc}")
+    if not isinstance(config, dict):
+        return fail("configuration must be a JSON object")
+    for field in ("environment", "monitoring_id"):
+        value = config.get(field)
+        if not isinstance(value, str) or not value.strip():
+            return fail(f"configuration field is missing or invalid: {field}")
+    thresholds = config.get("thresholds")
+    if not isinstance(thresholds, dict):
+        return fail("configuration field is missing or invalid: thresholds")
+    for name in ("cpu_percent", "memory_percent"):
+        value = thresholds.get(name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return fail(f"threshold is missing or invalid: {name}")
+        if value < 0 or value > 100:
+            return fail(f"threshold is out of range: {name}")
+    usage = shutil.disk_usage(LAB_ROOT)
+    print("status: valid")
+    print(f"environment: {config['environment']}")
+    print(f"monitoring_id: {config['monitoring_id']}")
+    print(f"cpu_threshold_percent: {thresholds['cpu_percent']}")
+    print(f"memory_threshold_percent: {thresholds['memory_percent']}")
+    print(f"lab_disk_total_bytes: {usage.total}")
+    print(f"lab_disk_used_bytes: {usage.used}")
+    print("target: disposable linux lab, not the windows host")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

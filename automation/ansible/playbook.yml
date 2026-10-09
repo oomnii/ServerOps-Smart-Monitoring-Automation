@@ -1,0 +1,86 @@
+---
+- name: Configure the disposable ServerOps Linux lab
+  hosts: serverops_lab
+  gather_facts: true
+  vars_files:
+    - vars/config.yml
+  tasks:
+    - name: Confirm this run is limited to the local Linux lab
+      ansible.builtin.assert:
+        that:
+          - ansible_facts["system"] == "Linux"
+          - ansible_connection == "local"
+          - groups["serverops_lab"] == ["localhost"]
+          - groups["all"] | difference(groups["serverops_lab"]) | length == 0
+          - serverops_lab_root == "/tmp/serverops-lab"
+          - serverops_environment | length > 0
+          - serverops_monitoring_id | length > 0
+          - serverops_cpu_threshold is number
+          - serverops_memory_threshold is number
+          - serverops_cpu_threshold >= 0
+          - serverops_cpu_threshold <= 100
+          - serverops_memory_threshold >= 0
+          - serverops_memory_threshold <= 100
+        fail_msg: "Refusing to configure an unexpected host or destination."
+      changed_when: false
+
+    - name: Create the lab directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ serverops_lab_root }}"
+        - "{{ serverops_lab_root }}/config"
+        - "{{ serverops_lab_root }}/scripts"
+        - "{{ serverops_lab_root }}/logs"
+
+    - name: Generate the lab configuration
+      ansible.builtin.template:
+        src: templates/serverops.json.j2
+        dest: "{{ serverops_lab_root }}/config/serverops.json"
+        mode: "0644"
+
+    - name: Deploy the lab health-check script
+      ansible.builtin.template:
+        src: templates/health_check.py.j2
+        dest: "{{ serverops_lab_root }}/scripts/health_check.py"
+        mode: "0755"
+
+    - name: Check the generated configuration
+      ansible.builtin.stat:
+        path: "{{ serverops_lab_root }}/config/serverops.json"
+      register: serverops_config_stat
+      changed_when: false
+
+    - name: Check the health-check script
+      ansible.builtin.stat:
+        path: "{{ serverops_lab_root }}/scripts/health_check.py"
+      register: serverops_script_stat
+      changed_when: false
+
+    - name: Confirm the deployed files and permissions
+      ansible.builtin.assert:
+        that:
+          - serverops_config_stat.stat.exists
+          - serverops_config_stat.stat.mode == "0644"
+          - serverops_script_stat.stat.exists
+          - serverops_script_stat.stat.mode == "0755"
+        fail_msg: "The lab files were not deployed with the expected permissions."
+      changed_when: false
+
+    - name: Run the lab health check
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/python3
+          - "{{ serverops_lab_root }}/scripts/health_check.py"
+      register: serverops_health
+      changed_when: false
+
+    - name: Confirm the health check passed
+      ansible.builtin.assert:
+        that:
+          - serverops_health.rc == 0
+          - "'status: valid' in serverops_health.stdout"
+        fail_msg: "{{ serverops_health.stdout }} {{ serverops_health.stderr }}"
+      changed_when: false

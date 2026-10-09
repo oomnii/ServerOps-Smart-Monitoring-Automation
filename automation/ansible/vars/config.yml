@@ -1,0 +1,5 @@
+serverops_lab_root: /tmp/serverops-lab
+serverops_environment: development
+serverops_monitoring_id: linux-lab
+serverops_cpu_threshold: 80
+serverops_memory_threshold: 80

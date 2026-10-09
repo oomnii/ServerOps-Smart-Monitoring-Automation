@@ -1,0 +1,24 @@
+name: serverops-ansible
+
+services:
+  lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: serverops-ansible-lab:phase5
+    user: "1000:1000"
+    network_mode: none
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    read_only: false
+    environment:
+      ANSIBLE_CONFIG: /home/serverops/ansible.cfg
+    volumes:
+      - ./:/opt/serverops-ansible:ro
+    working_dir: /opt/serverops-ansible
+    command: ["sleep", "infinity"]

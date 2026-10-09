@@ -1,0 +1,14 @@
+[run]
+source = monitor, config
+omit =
+    */tests.py
+    */test_*.py
+    */*_tests.py
+    */conftest.py
+    */migrations/*
+    */e2e_settings.py
+    */run_e2e_server.py
+
+[report]
+show_missing = true
+skip_covered = false
