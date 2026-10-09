@@ -108,3 +108,4 @@ ehthumbs.db
 # Local Docker overrides (compose definitions, when added later, stay tracked)
 docker-compose.override.yml
 *.pid
+scripts/.runtime/

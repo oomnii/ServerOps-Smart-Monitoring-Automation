@@ -63,8 +63,8 @@ class CpuEndpointTests(StaffApiTestCase):
         self.assertIsInstance(response.data["cpu_percent"], float)
         self.assertIsInstance(response.data["logical_cores"], int)
         mock_percent.assert_called_once_with(interval=CPU_SAMPLE_SECONDS)
-        self.assertGreater(CPU_SAMPLE_SECONDS, 0)
-        self.assertLessEqual(CPU_SAMPLE_SECONDS, 0.5)
+        self.assertGreaterEqual(CPU_SAMPLE_SECONDS, 1.0)
+        self.assertLess(CPU_SAMPLE_SECONDS, 4.0)
         mock_count.assert_called_once_with(logical=True)
 
 

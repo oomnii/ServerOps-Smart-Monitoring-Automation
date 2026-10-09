@@ -40,7 +40,7 @@ Django runs from `backend/` on Python 3.11. `monitor/services.py` reads the host
 | `GET /api/metrics/disk/` | Active staff | `total_bytes`, `used_bytes`, `free_bytes`, `disk_percent` |
 | `GET /api/metrics/` | Active staff | `timestamp_utc` plus `cpu`, `memory`, and `disk` |
 
-CPU percentage uses a 0.1 second sample. Memory and disk sizes are bytes. The disk reading uses the Windows system drive (`SystemDrive`, usually `C:\`), not `/`. The timestamp is UTC ISO 8601. GET requests do not insert metric rows.
+CPU percentage uses a one-second blocking sample, the same interval as Windows `% Processor Time`. Memory and disk sizes are bytes. The disk reading uses the Windows system drive (`SystemDrive`, usually `C:\`), not `/`. The timestamp is UTC ISO 8601. GET requests do not insert metric rows.
 
 `/api/health/` reports that the API process answered. It does not score CPU, memory, or disk health.
 

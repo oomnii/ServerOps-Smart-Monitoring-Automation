@@ -6,8 +6,12 @@ from datetime import datetime, timezone
 
 import psutil
 
-# Short sample so the reading is real without holding the request for long.
-CPU_SAMPLE_SECONDS = 0.1
+# Blocking sample matching the one-second interval of Windows % Processor Time.
+# A 0.1 second sample follows a single scheduling burst, so consecutive
+# dashboard polls swing even when the machine's one-second utilization is steady.
+# interval=None is not used: its first call is 0, and a second caller on the
+# same thread consumes that baseline.
+CPU_SAMPLE_SECONDS = 1.0
 
 _SAFE_MESSAGES = {
     "cpu": "Unable to collect CPU metrics.",

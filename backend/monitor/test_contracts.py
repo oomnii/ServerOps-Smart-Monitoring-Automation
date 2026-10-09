@@ -39,6 +39,29 @@ class AnonymousMetricTests(TestCase):
             self.assertNotIn(b"total_bytes", response.content)
 
 
+class CpuSampleWindowTests(TestCase):
+    def test_each_reading_uses_a_one_second_blocking_sample(self):
+        from monitor.services import CPU_SAMPLE_SECONDS, get_cpu_metrics
+
+        self.assertGreaterEqual(CPU_SAMPLE_SECONDS, 1.0)
+        self.assertLess(CPU_SAMPLE_SECONDS, 4.0)
+        with (
+            patch("monitor.services.psutil.cpu_percent", return_value=12.5) as sample,
+            patch("monitor.services.psutil.cpu_count", return_value=4),
+        ):
+            first = get_cpu_metrics()
+            second = get_cpu_metrics()
+
+        self.assertEqual(sample.call_count, 2)
+        for call in sample.call_args_list:
+            self.assertEqual(call.kwargs, {"interval": CPU_SAMPLE_SECONDS})
+            self.assertIsNotNone(call.kwargs["interval"])
+            self.assertGreaterEqual(call.kwargs["interval"], 1.0)
+        self.assertEqual(first["cpu_percent"], 12.5)
+        self.assertEqual(second["cpu_percent"], 12.5)
+        self.assertEqual(first["logical_cores"], 4)
+
+
 class MetricBoundaryTests(TestCase):
     def setUp(self):
         self.client = APIClient()
